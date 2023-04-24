@@ -60,6 +60,20 @@ const tableList = (pageSize) => {
           userType: '@USERTYPE',
           naturalEwt: '@NATURALEWT',
           remark: '@cparagraph(1, 2)',
+          dataList: ({
+              "data|1-10": [
+                {
+                  "taskId": '@integer(10,999999)',
+                  "title": '@cparagraph(1)',
+                  "desc": '@cparagraph(1, 2)',
+                  "pics|1-3": [
+                    `@image("80x80", "${Random.color()}", "${Random.color()}", "${Random.first()}")`
+                  ],
+                }
+              ]
+            }
+          ),
+          resultPage: Random.image('240x400', Random.color(), Random.color(), Random.first()),
           avatar: Random.image('400x400', Random.color(), Random.color(), Random.first()),
           date: `@date('yyyy-MM-dd')`
       });

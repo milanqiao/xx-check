@@ -105,6 +105,7 @@
         </el-table-column>
       </el-table-column>
     </el-table>
+    <!-- 通过/拒绝/搁置确认弹框 -->
     <el-dialog
       v-model="checkItemDialog"
       :title="checkParams.ispass ? '通过' : '拒绝'"
@@ -126,7 +127,27 @@
           </el-button>
         </span>
       </template>
-    </el-dialog>                                    
+    </el-dialog>
+    <!-- 拒绝账户确认弹框 -->
+    <el-dialog
+      v-model="rejectAccountDialog"
+      :title="'拒绝账户'"
+      width="30%"
+      destroy-on-close
+      center
+    >
+      <div>
+        <div>拒绝账户的任务id分别是：{{currentTask.id}}</div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="rejectAccountDialog = false">取消</el-button>
+          <el-button type="primary" @click="rejectAccountDialog = false">
+            确认
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>                                  
   </div>
 </template>
 
@@ -152,6 +173,7 @@ const ischeckAll = ref(false)
 const checkParams = ref({})
 // 每条数据通过/拒绝的弹框
 const checkItemDialog = ref(false)
+const rejectAccountDialog = ref(false)
 // 当前所选数据
 const currentSelected = ref([])
 
@@ -281,6 +303,12 @@ const SelectChange = val => {
 }
 // 通过所选/拒绝所选
 const chekItem = flag => {
+  if(!currentSelected.value.length) {
+    return ElMessage({
+      message: '请勾选至少一项任务',
+      type: 'warning',
+    })
+  }
   checkParams.value = {
     ispass: flag,
     passItems: currentSelected.value
@@ -289,7 +317,7 @@ const chekItem = flag => {
 }
 // 拒绝账户
 const rejectuser = () => {
-
+  rejectAccountDialog.value = true
 }
 // 搁置任务
 const shelve = () => {
@@ -298,6 +326,10 @@ const shelve = () => {
 </script>
 
 <style scoped>
+h1 {
+  font-weight: 400;
+  margin: 20px 0;
+}
 .btns {
   margin: 15px 0;
 }

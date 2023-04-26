@@ -19,16 +19,16 @@
     <!-- 按钮区 -->
     <el-row class="row-bg btns" justify="space-between">
       <el-col :span="4"><div class="grid-content ep-bg-purple" />
-        <el-button type="default" @click="chekItem(true)" :style="{width: '120px', fontWeight: '600'}">通过所选</el-button>
+        <el-button type="default" @click="chekItem('pass')" :style="{width: '120px', fontWeight: '600'}">通过所选</el-button>
       </el-col>
       <el-col :span="4"><div class="grid-content ep-bg-purple" />
-        <el-button type="default" @click="chekItem(false)" :style="{width: '120px', fontWeight: '600'}">拒绝所选</el-button>
+        <el-button type="default" @click="chekItem('reject')" :style="{width: '120px', fontWeight: '600'}">拒绝所选</el-button>
       </el-col>
       <el-col :span="4"><div class="grid-content ep-bg-purple" />
         <el-button type="default" @click="rejectuser" :style="{width: '120px', fontWeight: '600'}">拒绝账户</el-button>
       </el-col>
       <el-col :span="4"><div class="grid-content ep-bg-purple" />
-        <el-button type="default" @click="shelve" :style="{width: '120px', fontWeight: '600'}">搁置</el-button>
+        <el-button type="default" @click="chekItem('shelve')" :style="{width: '120px', fontWeight: '600'}">搁置</el-button>
       </el-col>
       <el-col :span="4"><div class="grid-content ep-bg-purple" />
         <el-button @click="getNextTask" :disabled="hasNext" type="default" :style="{width: '120px', fontWeight: '600'}">下一个任务</el-button>
@@ -50,7 +50,7 @@
       <el-table-column label="描述" prop="desc" width="280"/>
       <el-table-column label="图片">
         <template #default="scope">
-          <img v-for="item in scope.row.pics" :key="item.taskId" :src="item" style="margin: 0 5px" alt="">
+          <el-image v-for="item in scope.row.pics" :key="item.taskId" :src="item" style="margin: 0 5px" alt="" />
         </template>
       </el-table-column>
       <el-table-column label="操作" width="55" align="'center'">
@@ -77,8 +77,10 @@
       <el-table-column label="落地页" align="center">
         <el-table-column  width="300">
           <template #default>
-            <div style="display: flex; align-items: center">
+            <div>
+              <div>
                 <el-image :src="resultPageURL"/>
+              </div>
             </div>
         </template>
         </el-table-column>
@@ -88,7 +90,7 @@
               link
               type="primary"
               size="small"
-              @click.prevent="pass()"
+              @click.prevent="checkResult('pass')"
             >
               通过
             </el-button>
@@ -97,7 +99,7 @@
               style="margin-left: 0"
               type="primary"
               size="small"
-              @click.prevent="reject()"
+              @click.prevent="checkResult('reject')"
             >
               拒绝
             </el-button>
@@ -108,13 +110,15 @@
     <!-- 通过/拒绝/搁置确认弹框 -->
     <el-dialog
       v-model="checkItemDialog"
-      :title="checkParams.ispass ? '通过' : '拒绝'"
+      :title="checkParams.flag === 'pass' ? '通过' : (checkParams.flag === 'reject' ? '拒绝' : '搁置')"
       width="30%"
       destroy-on-close
       center
     >
       <div>
-        {{`${checkParams.ispass ? '通过' : '拒绝'}的任务id分别是：`}}
+        <div v-if="checkParams.flag === 'pass'">通过的任务id分别是：</div>
+        <div v-if="checkParams.flag === 'reject'">拒绝的任务id分别是：</div>
+        <div v-if="checkParams.flag === 'shelve'">搁置的任务id分别是：</div>
         <div v-for="item in checkParams.passItems" :key="item">
           <strong>{{ item }}</strong>
         </div>
@@ -122,7 +126,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="checkItemDialog = false">取消</el-button>
-          <el-button type="primary" @click="checkItemDialog = false">
+          <el-button type="primary" @click="confirmHandle">
             确认
           </el-button>
         </span>
@@ -143,6 +147,26 @@
         <span class="dialog-footer">
           <el-button @click="rejectAccountDialog = false">取消</el-button>
           <el-button type="primary" @click="rejectAccountDialog = false">
+            确认
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+    <!-- 通过/拒绝落地页弹框 -->
+    <el-dialog
+      v-model="checkResultDialog"
+      :title="checkResultParams.flag == 'pass' ? '通过' : '拒绝'"
+      width="30%"
+      destroy-on-close
+      center
+    >
+      <div>
+        <div>{{`${checkResultParams.flag == 'pass' ? '通过' : '拒绝'}的落地页用户id：${currentTask.id}`}}</div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="checkResultDialog = false">取消</el-button>
+          <el-button type="primary" @click="checkResultDialog = false">
             确认
           </el-button>
         </span>
@@ -171,9 +195,13 @@ const resultPageURL = ref([])
 const hasNext = ref(false)
 const ischeckAll = ref(false)
 const checkParams = ref({})
+const checkResultParams = ref({})
 // 每条数据通过/拒绝的弹框
 const checkItemDialog = ref(false)
+// 拒绝账户弹框
 const rejectAccountDialog = ref(false)
+// 通过/拒绝落地页弹框
+const checkResultDialog = ref(false)
 // 当前所选数据
 const currentSelected = ref([])
 
@@ -246,7 +274,7 @@ const baseSpanMethod = ({
 }) => {
   if (rowIndex == 2) {
     if (columnIndex === 3) {
-      return [2, 3]
+      return [1, 3]
     }
   }
 }
@@ -258,9 +286,9 @@ const checkSpanMethod = ({
   columnIndex,
 }) => {
   if(columnIndex == 5) {
-    return [checkData.value.length,1]
+    return [checkData.value.length, 1]
   } else if (columnIndex == 6) {
-    return [checkData.value.length,1]
+    return [checkData.value.length, 1]
   }
   
 }
@@ -276,7 +304,7 @@ const getNextTask = () => {
 const pass = row => {
   checkItemDialog.value = true
   checkParams.value = {
-    ispass: true,
+    flag: 'pass',
     passItems: [
       {
         taskId: row.taskId
@@ -288,7 +316,7 @@ const pass = row => {
 const reject= row => {
   checkItemDialog.value = true
   checkParams.value = {
-    ispass: false,
+    flag: 'reject',
     passItems: [
       {
         taskId: row.taskId
@@ -301,7 +329,7 @@ const SelectChange = val => {
   console.log('当前所选项：', val)
   currentSelected.value = val.map(task => ({ taskId: task.taskId }))
 }
-// 通过所选/拒绝所选
+// 通过所选/拒绝所选/搁置
 const chekItem = flag => {
   if(!currentSelected.value.length) {
     return ElMessage({
@@ -309,19 +337,31 @@ const chekItem = flag => {
       type: 'warning',
     })
   }
+  // 区分处理类型
   checkParams.value = {
-    ispass: flag,
+    flag,
     passItems: currentSelected.value
   }
   checkItemDialog.value = true
 }
+const confirmHandle = () => {
+  if(checkParams.value.flag  === 'shelve') {
+    console.log('点击了搁置')
+    getNextTask()
+  }
+  checkItemDialog.value = false
+}
+
 // 拒绝账户
 const rejectuser = () => {
   rejectAccountDialog.value = true
 }
-// 搁置任务
-const shelve = () => {
-  
+const checkResult = flag => {
+  checkResultParams.value = {
+    flag,
+    id: currentTask.value.id
+  }
+  checkResultDialog.value = true
 }
 </script>
 

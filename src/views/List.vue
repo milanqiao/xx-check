@@ -14,7 +14,7 @@
       </el-col>
       <el-col :span="7">
         <el-form-item label="行业：">
-          <el-input v-model="form.industry" placeholder="请输入行业" />
+          <el-input v-model="form.industryLev1" placeholder="请输入行业" />
         </el-form-item>
       </el-col>
     </el-row>
@@ -22,22 +22,12 @@
     <el-row class="row-bg" justify="space-between">
       <el-form-item label="任务创建时间">
         <el-col :span="11">
-          <el-date-picker
-            v-model="form.startDate"
-            type="date"
-            placeholder="开始时间"
-            style="width: 100%"
-          />
-        </el-col>
-        <el-col :span="2" class="text-center">
-          <span class="text-gray-500">-</span>
-        </el-col>
-        <el-col :span="11">
-          <el-date-picker
-            v-model="form.endDate"
-            type="date"
-            placeholder="结束时间"
-            style="width: 100%"
+           <el-date-picker
+            v-model="form.date"
+            type="daterange"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            :default-time="defaultTime"
           />
         </el-col>
       </el-form-item>
@@ -56,7 +46,7 @@
       <el-table-column prop="industryLev1" label="行业" width="180" />
       <el-table-column label="创建时间">
         <template #default="scope">
-          {{scope.row.beginTime}}
+          {{scope.row.createTime}}
         </template>
       </el-table-column>
       <el-table-column label="操作" width="200">
@@ -86,7 +76,7 @@
         <el-pagination
           class="pagination"
           background 
-          layout="prev, pager, next" 
+          layout="total, prev, pager, next" 
           :total="tableData.total"
           v-model:current-page="currentPage"
           @current-change="pageChange"
@@ -105,28 +95,33 @@
 
   const router = useRouter()
   const store = useStore()
-  const form = reactive({
-    userName: '',
-    prodline: '',
-    industry: '',
-    startDate: '',
-    endDate: '',
-  })
 
   let tableData = reactive({ value: [], total: 0, page: 1 })
   const currentPage = ref(1)
+  const defaultTime = ref([
+    new Date(2000, 1, 1, 0, 0, 0),
+    new Date(2000, 2, 1, 23, 59, 59),
+  ])
   const loading = ref(true)
+
+  const form = reactive({
+    userName: '',
+    prodline: '',
+    industryLev1: '',
+    date: []
+  })
 
   onMounted(() => {
     getData({ page: currentPage.value, pageSize: 10 })
   })
 
-  const getData = async ({page = 1, pageSize = 10}) => {
+  const getData = async ({page = 1, pageSize = 10, searchParam}) => {
     loading.value = true
     const {data} = await axios.get('/getlist', {
       params: {
         page,
         pageSize,
+        ...searchParam
       },
     })
     tableData.value = data.result.list
@@ -137,7 +132,18 @@
   }
 
   const searchHandle = async () => {
-    getData({ page: 1, pageSize: 10 })
+    let searchParam = {}
+    for (const key in form) {
+      if (Object.hasOwnProperty.call(form, key)) {
+        if(form.date.length) {
+          searchParam['startDate'] = form.date[0]
+          searchParam['endDate'] = form.date[1]
+        }
+        if(form[key] !== '') searchParam[key] = form[key]
+      }
+    }
+    console.log('当前搜索区域',searchParam)
+    getData({ page: 1, pageSize: 10, searchParam })
   }
 
   const pageChange = page => {

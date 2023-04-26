@@ -30,12 +30,40 @@ Random.extend({
 
 // 包装返回的数据
 function success(result, { message = 'ok' } = {}) {
-  return mock({
+  let resp =  mock({
       code: 200,
       result,
       message,
       type: 'success',
   });
+  console.log()
+  if(JSON.stringify(result.params) === '{}') {
+    return resp
+  } else {
+    let target = resp.result.list
+    const { userName, prodline, industryLev1, startDate, endDate } = result.params
+    if(userName) {
+      target = target.filter(item => (item.userName === userName))
+    }
+    if(prodline) {
+      target = target.filter(item => (item.prodline === prodline))
+    }
+    if(industryLev1) {
+      target = target.filter(item => (item.industryLev1 === industryLev1))
+    }
+    if(startDate && endDate) {
+      target = target.filter(item => {
+        return new Date(item.createTime).getTime() < new Date(endDate).getTime() && 
+               new Date(item.createTime).getTime() > new Date(startDate).getTime()
+      })
+    }
+    return {
+      code: 200,
+      result: {...result, list: target, pageCount: target.length },
+      message,
+      type: 'success',
+    }
+  }
 }
 
 function makeMock(times, callback) {
@@ -54,8 +82,7 @@ const tableList = (pageSize) => {
           prodline: '@PRODLINE',
           industryLev1: '@INDUSTRY',
           industryLev2: '@INDUSTRY',
-          beginTime: '@datetime',
-          endTime: '@datetime',
+          createTime: '@datetime',
           webSite: '@WEBSITE',
           userType: '@USERTYPE',
           naturalEwt: '@NATURALEWT',
@@ -86,13 +113,14 @@ export default [
     url:'/getlist',
     timeout: 1000,
     response: ({ query }) => {
-      let { page, pageSize } = query
+      let { page, pageSize, ...params } = query
       pageSize = pageSize >= 100 ? 100 : pageSize
       const list = tableList(Number(pageSize))
       return success({
         page: Number(page),
         pageSize: Number(pageSize),
         pageCount: 100,
+        params: params || {},
         list,
       });
     }
